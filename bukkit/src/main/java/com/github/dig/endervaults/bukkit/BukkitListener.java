@@ -3,10 +3,14 @@ package com.github.dig.endervaults.bukkit;
 import com.github.dig.endervaults.api.VaultPluginProvider;
 import com.github.dig.endervaults.api.lang.Lang;
 import com.github.dig.endervaults.api.permission.UserPermission;
+import com.github.dig.endervaults.api.vault.Vault;
 import com.github.dig.endervaults.api.vault.VaultPersister;
+import com.github.dig.endervaults.api.vault.metadata.VaultDefaultMetadata;
 import com.github.dig.endervaults.bukkit.ui.selector.SelectorInventory;
+import com.github.dig.endervaults.bukkit.vault.BukkitVault;
 import com.github.dig.endervaults.bukkit.vault.BukkitVaultRegistry;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.Configuration;
@@ -16,20 +20,16 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryDragEvent;
-import org.bukkit.event.inventory.InventoryMoveItemEvent;
+import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class BukkitListener implements Listener {
@@ -72,6 +72,24 @@ public class BukkitListener implements Listener {
             if (!permission.canBypassBlacklist(player) && getBlacklisted().contains(item.getType()) && registry.isVault(inventory)) {
                 player.sendMessage(plugin.getLanguage().get(Lang.BLACKLISTED_ITEM));
                 event.setCancelled(true);
+            }
+        }
+
+        if (event.getAction().equals(InventoryAction.MOVE_TO_OTHER_INVENTORY)){
+//            player.sendMessage(String.valueOf(event.getInventory().getType()));
+//            player.sendMessage(ChatColor.RED + "====================");
+//            player.sendMessage(String.valueOf(Objects.requireNonNull(event.getClickedInventory()).getType()));
+            Inventory from = event.getClickedInventory();
+            if (inventory.getType().equals(InventoryType.CHEST) && from != null && from.getType().equals(InventoryType.PLAYER)){
+                if (registry.isVault(inventory)){
+                    BukkitVault vault = (BukkitVault) getVault(player, inventory);
+                    assert vault != null;
+                    int order = (int) vault.getMetadata().get(VaultDefaultMetadata.ORDER.getKey());
+                    if (!player.hasPermission("endervaults.vault." + order + ".add")){
+                        player.sendMessage(plugin.getLanguage().get(Lang.TAKE_ONLY));
+                        event.setCancelled(true);
+                    }
+                }
             }
         }
     }
@@ -136,5 +154,58 @@ public class BukkitListener implements Listener {
                 .stream()
                 .map(Material::valueOf)
                 .collect(Collectors.toSet());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onItemMove(InventoryMoveItemEvent event){
+        if (event.isCancelled()){
+            return;
+        }
+
+        plugin.getLogger().info("hello");
+
+        Inventory source = event.getSource();
+        Inventory destination = event.getDestination();
+
+        plugin.getLogger().info((source instanceof PlayerInventory) + " " + (source.getViewers().get(0) instanceof Player));
+
+        if (!(source instanceof PlayerInventory) || !(source.getViewers().get(0) instanceof Player)){
+            return;
+        }
+
+        Player player = (Player) source.getViewers().get(0);
+        assert player != null;
+
+        player.sendMessage("hello");
+
+        BukkitVaultRegistry registry = (BukkitVaultRegistry) plugin.getRegistry();
+        ItemStack item = event.getItem();
+
+        if (isBlacklistEnabled()) {
+            if (!permission.canBypassBlacklist(player) && getBlacklisted().contains(item.getType()) && registry.isVault(destination)) {
+                player.sendMessage(plugin.getLanguage().get(Lang.BLACKLISTED_ITEM));
+                event.setCancelled(true);
+            }
+        }
+
+        if (registry.isVault(destination)){
+            BukkitVault vault = (BukkitVault) getVault(player, destination);
+            assert vault != null;
+            int order = (int) vault.getMetadata().get(VaultDefaultMetadata.ORDER.getKey());
+            player.sendMessage(String.valueOf(order));
+//            vault.get
+//            permission
+        }
+    }
+
+    private Vault getVault(Player player, Inventory inventory){
+        BukkitVaultRegistry registry = (BukkitVaultRegistry) plugin.getRegistry();
+        for (Vault vault: registry.get(player.getUniqueId()).values()){
+            BukkitVault bukkitVault = (BukkitVault) vault;
+            if (bukkitVault.compare(inventory)) {
+                return vault;
+            }
+        }
+        return null;
     }
 }
