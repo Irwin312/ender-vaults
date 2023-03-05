@@ -76,9 +76,6 @@ public class BukkitListener implements Listener {
         }
 
         if (event.getAction().equals(InventoryAction.MOVE_TO_OTHER_INVENTORY)){
-//            player.sendMessage(String.valueOf(event.getInventory().getType()));
-//            player.sendMessage(ChatColor.RED + "====================");
-//            player.sendMessage(String.valueOf(Objects.requireNonNull(event.getClickedInventory()).getType()));
             Inventory from = event.getClickedInventory();
             if (inventory.getType().equals(InventoryType.CHEST) && from != null && from.getType().equals(InventoryType.PLAYER)){
                 if (registry.isVault(inventory)){
@@ -156,47 +153,6 @@ public class BukkitListener implements Listener {
                 .collect(Collectors.toSet());
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onItemMove(InventoryMoveItemEvent event){
-        if (event.isCancelled()){
-            return;
-        }
-
-        plugin.getLogger().info("hello");
-
-        Inventory source = event.getSource();
-        Inventory destination = event.getDestination();
-
-        plugin.getLogger().info((source instanceof PlayerInventory) + " " + (source.getViewers().get(0) instanceof Player));
-
-        if (!(source instanceof PlayerInventory) || !(source.getViewers().get(0) instanceof Player)){
-            return;
-        }
-
-        Player player = (Player) source.getViewers().get(0);
-        assert player != null;
-
-        player.sendMessage("hello");
-
-        BukkitVaultRegistry registry = (BukkitVaultRegistry) plugin.getRegistry();
-        ItemStack item = event.getItem();
-
-        if (isBlacklistEnabled()) {
-            if (!permission.canBypassBlacklist(player) && getBlacklisted().contains(item.getType()) && registry.isVault(destination)) {
-                player.sendMessage(plugin.getLanguage().get(Lang.BLACKLISTED_ITEM));
-                event.setCancelled(true);
-            }
-        }
-
-        if (registry.isVault(destination)){
-            BukkitVault vault = (BukkitVault) getVault(player, destination);
-            assert vault != null;
-            int order = (int) vault.getMetadata().get(VaultDefaultMetadata.ORDER.getKey());
-            player.sendMessage(String.valueOf(order));
-//            vault.get
-//            permission
-        }
-    }
 
     private Vault getVault(Player player, Inventory inventory){
         BukkitVaultRegistry registry = (BukkitVaultRegistry) plugin.getRegistry();
