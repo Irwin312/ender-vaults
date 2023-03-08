@@ -160,6 +160,7 @@ public class BukkitVault implements Vault, VaultSerializable {
             nmsItemStackClazz = nmsBridge.getItemStackClass();
         } catch (ClassNotFoundException e) {
             log.log(Level.SEVERE, "[EnderVaults] Unable to find craft item stack class.", e);
+
             return null;
         }
 
