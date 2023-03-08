@@ -10,10 +10,8 @@ import com.github.dig.endervaults.bukkit.ui.selector.SelectorInventory;
 import com.github.dig.endervaults.bukkit.vault.BukkitVault;
 import com.github.dig.endervaults.bukkit.vault.BukkitVaultRegistry;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.configuration.Configuration;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -26,7 +24,6 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
@@ -63,7 +60,6 @@ public class BukkitListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onClick(InventoryClickEvent event) {
         Player player = (Player) event.getWhoClicked();
-
         BukkitVaultRegistry registry = (BukkitVaultRegistry) plugin.getRegistry();
         ItemStack item = event.getCurrentItem();
         Inventory inventory = event.getInventory();
@@ -72,21 +68,33 @@ public class BukkitListener implements Listener {
             if (!permission.canBypassBlacklist(player) && getBlacklisted().contains(item.getType()) && registry.isVault(inventory)) {
                 player.sendMessage(plugin.getLanguage().get(Lang.BLACKLISTED_ITEM));
                 event.setCancelled(true);
+                return;
             }
         }
 
-        if (event.getAction().equals(InventoryAction.MOVE_TO_OTHER_INVENTORY)){
-            Inventory from = event.getClickedInventory();
-            if (inventory.getType().equals(InventoryType.CHEST) && from != null && from.getType().equals(InventoryType.PLAYER)){
-                if (registry.isVault(inventory)){
-                    BukkitVault vault = (BukkitVault) getVault(player, inventory);
-                    assert vault != null;
-                    int order = (int) vault.getMetadata().get(VaultDefaultMetadata.ORDER.getKey());
-                    if (!player.hasPermission("endervaults.vault." + order + ".add")){
-                        player.sendMessage(plugin.getLanguage().get(Lang.TAKE_ONLY));
-                        event.setCancelled(true);
-                    }
-                }
+        Inventory clickedInventory = event.getClickedInventory();
+        InventoryAction action = event.getAction();
+
+        if (!registry.isVault(inventory)){
+            return;
+        }
+
+        BukkitVault vault = (BukkitVault) getVault(player, inventory);
+        assert vault != null;
+        int order = (int) vault.getMetadata().get(VaultDefaultMetadata.ORDER.getKey());
+
+        if (isTakeItemFromVault(inventory, clickedInventory, action)){
+            if (!player.hasPermission("endervaults.vault." + order + ".take")){
+                player.sendMessage(plugin.getLanguage().get(Lang.TAKE_ITEM_NO_PERM));
+                event.setCancelled(true);
+                return;
+            }
+        }
+
+        if (isAddItemToVault(inventory, clickedInventory, action)){
+            if (!player.hasPermission("endervaults.vault." + order + ".add")){
+                player.sendMessage(plugin.getLanguage().get(Lang.ADD_ITEM_NO_PERM));
+                event.setCancelled(true);
             }
         }
     }
@@ -163,5 +171,46 @@ public class BukkitListener implements Listener {
             }
         }
         return null;
+    }
+
+    private boolean isAddItemToVault(Inventory inventory, Inventory clickedInventory, InventoryAction action){
+        if (clickedInventory == null){
+            return false;
+        }
+
+        if (action.equals(InventoryAction.NOTHING)){
+            return false;
+        }
+
+        if (inventory.equals(clickedInventory)){
+            if (action.name().contains("PLACE")){
+                return true;
+            }
+
+            return action.name().contains("HOTBAR");
+        }
+
+        return action.equals(InventoryAction.MOVE_TO_OTHER_INVENTORY) && clickedInventory.getType().equals(InventoryType.PLAYER);
+    }
+
+    private boolean isTakeItemFromVault(Inventory inventory, Inventory clickedInventory, InventoryAction action){
+        if (action.equals(InventoryAction.NOTHING)){
+            return false;
+        }
+
+        if (inventory.equals(clickedInventory)){
+            if (action.name().contains("PICKUP")){
+                return true;
+            }
+            if (action.name().contains("HOTBAR")){
+                return true;
+            }
+            if (action.name().contains("DROP")){
+                return true;
+            }
+            return action.equals(InventoryAction.MOVE_TO_OTHER_INVENTORY);
+        }
+
+        return false;
     }
 }

@@ -106,6 +106,8 @@ vault:
     # https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Material.html
     items:
       - BARRIER
+    worlds:
+      - disable_world
 
 # Auto save timer
 auto-save:

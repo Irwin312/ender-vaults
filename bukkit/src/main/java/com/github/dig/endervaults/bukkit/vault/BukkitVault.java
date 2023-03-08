@@ -2,6 +2,8 @@ package com.github.dig.endervaults.bukkit.vault;
 
 import com.github.dig.endervaults.api.EnderVaultsPlugin;
 import com.github.dig.endervaults.api.VaultPluginProvider;
+import com.github.dig.endervaults.api.lang.Lang;
+import com.github.dig.endervaults.bukkit.EVBukkitPlugin;
 import com.github.dig.endervaults.nms.NMSProvider;
 import com.github.dig.endervaults.nms.VaultNMS;
 import com.github.dig.endervaults.api.util.VaultSerializable;
@@ -33,11 +35,13 @@ public class BukkitVault implements Vault, VaultSerializable {
     @Getter
     private Inventory inventory;
     private Map<String, Object> metadata = new HashMap<>();
+    private EVBukkitPlugin plugin;
 
     public BukkitVault(UUID id, String title, int size, UUID ownerUUID) {
         this.id = id;
         this.ownerUUID = ownerUUID;
         this.inventory = Bukkit.createInventory(new BukkitInventoryHolder(this), size, title);
+        this.plugin = EVBukkitPlugin.getPlugin(EVBukkitPlugin.class);
     }
 
     public BukkitVault(UUID id, String title, int size, UUID ownerUUID, Map<String, Object> metadata) {
@@ -137,6 +141,12 @@ public class BukkitVault implements Vault, VaultSerializable {
     }
 
     public void launchFor(Player player) {
+        for (String world: plugin.getConfigFile().getConfiguration().getStringList("vault.blacklist.worlds")){
+            if (player.getWorld().getName().equalsIgnoreCase(world)){
+                player.sendMessage(plugin.getLanguage().get(Lang.BLACKLISTED_WORLD));
+                return;
+            }
+        }
         player.openInventory(inventory);
     }
 

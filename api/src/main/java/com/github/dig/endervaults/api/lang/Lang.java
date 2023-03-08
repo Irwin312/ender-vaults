@@ -15,7 +15,10 @@ public enum Lang {
     BLACKLISTED_ITEM("blacklisted-item"),
     PLAYER_NOT_FOUND("player-not-found"),
     ONLY_FROM_CONSOLE("only-from-console"),
-    TAKE_ONLY("take-only");
+    TAKE_ITEM_NO_PERM("take-item-no-perm"),
+    ADD_ITEM_NO_PERM("add-item-no-perm"),
+    BLACKLISTED_WORLD("blacklisted-world")
+    ;
 
     @Getter
     private String key;
